@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { dashboardApi } from '@/lib/api';
+import { testDatabaseConnection } from '@/lib/db-test';
 import Layout from '@/components/Layout';
 
 export default function DashboardPage() {
@@ -11,12 +12,18 @@ export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
+
+    // Test database connection
+    testDatabaseConnection().then((result) => {
+      setDbStatus(result.success ? 'connected' : 'disconnected');
+    });
 
     loadDashboard();
   }, [router]);
@@ -57,7 +64,21 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${
+              dbStatus === 'connected' ? 'bg-green-500' : 
+              dbStatus === 'disconnected' ? 'bg-red-500' : 
+              'bg-yellow-500'
+            }`}></div>
+            <span className="text-sm text-gray-600">
+              {dbStatus === 'connected' ? 'Database Connected' : 
+               dbStatus === 'disconnected' ? 'Database Disconnected' : 
+               'Checking...'}
+            </span>
+          </div>
+        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -233,4 +254,3 @@ export default function DashboardPage() {
     </Layout>
   );
 }
-

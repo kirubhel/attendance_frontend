@@ -8,6 +8,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Don't show layout on landing page
+  if (pathname === '/landing') {
+    return <>{children}</>;
+  }
+
   const handleLogout = () => {
     removeToken();
     router.push('/login');
