@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-absence",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
+
