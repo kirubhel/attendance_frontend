@@ -36,7 +36,7 @@ export async function sendQRCodeEmail(
     const buffer = Buffer.from(base64Data, 'base64');
 
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      from: `"${process.env.SMTP_FROM_NAME || "Nardi's Attendance"}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
       to: email,
       subject: 'Your QR Code for Attendance',
       html: `
@@ -90,7 +90,7 @@ export async function sendWarningEmail(email: string, studentName: string, daysA
 
   try {
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      from: `"${process.env.SMTP_FROM_NAME || "Nardi's Attendance"}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
       to: email,
       subject: 'Attendance Warning - Action Required',
       html: `
@@ -137,7 +137,7 @@ export async function sendBlockEmail(email: string, studentName: string): Promis
 
   try {
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      from: `"${process.env.SMTP_FROM_NAME || "Nardi's Attendance"}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
       to: email,
       subject: 'Account Blocked - Attendance Violation',
       html: `
