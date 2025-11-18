@@ -75,7 +75,7 @@ export async function PUT(
             student.fullname,
             course.name,
             schedule
-          ).catch(err => {
+          ).catch((err: any) => {
             console.error(`Failed to send schedule update email to ${student.email}:`, err);
             // Don't throw - continue with other emails
           })

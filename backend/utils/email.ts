@@ -175,3 +175,76 @@ export async function sendBlockEmail(email: string, studentName: string): Promis
     throw new Error('Failed to send block email');
   }
 }
+
+export async function sendCourseScheduleUpdateEmail(
+  email: string,
+  studentName: string,
+  courseName: string,
+  schedule: any
+): Promise<void> {
+  if (!transporter) {
+    console.log('Email service not configured. Would send schedule update to:', email);
+    return;
+  }
+
+  // Format schedule for display
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  let scheduleHtml = '';
+  
+  if (schedule.days) {
+    scheduleHtml = '<ul style="list-style: none; padding: 0; margin: 15px 0;">';
+    Object.entries(schedule.days).forEach(([day, daySchedule]: [string, any]) => {
+      const dayName = weekdays[Number(day)];
+      scheduleHtml += `<li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+        <strong>${dayName}:</strong> ${daySchedule.startTime} - ${daySchedule.endTime}
+      </li>`;
+    });
+    scheduleHtml += '</ul>';
+  } else if (schedule.weekdays && schedule.startTime && schedule.endTime) {
+    const dayNames = schedule.weekdays.map((d: number) => weekdays[d]).join(', ');
+    scheduleHtml = `<p style="margin: 15px 0;"><strong>Days:</strong> ${dayNames}<br/>
+      <strong>Time:</strong> ${schedule.startTime} - ${schedule.endTime}</p>`;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'Attendance System'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      to: email,
+      subject: `Course Schedule Updated - ${courseName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0;">📅 Schedule Update</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #1f2937; margin-top: 0;">Dear ${studentName},</h2>
+            <p style="color: #4b5563; line-height: 1.6;">
+              The schedule for <strong style="color: #667eea;">${courseName}</strong> has been updated.
+            </p>
+            <div style="background: #e0e7ff; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <h3 style="color: #1e3a8a; margin-top: 0; margin-bottom: 10px;">Updated Schedule:</h3>
+              ${scheduleHtml}
+              <p style="color: #1e3a8a; margin: 10px 0 0 0; font-size: 14px;">
+                <strong>Note:</strong> Check-in opens 30 minutes before each class starts.
+              </p>
+            </div>
+            <p style="color: #4b5563; line-height: 1.6;">
+              Please make note of the new schedule and ensure you attend classes at the updated times.
+            </p>
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; margin: 0; font-size: 14px;">
+                Best regards,<br/>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Attendance System'}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+
+    console.log(`✅ Schedule update email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending schedule update email:', error);
+    throw new Error('Failed to send schedule update email');
+  }
+}
