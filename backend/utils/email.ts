@@ -60,7 +60,7 @@ export async function sendQRCodeEmail(
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; margin: 0; font-size: 14px;">
                 Best regards,<br/>
-                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}</strong>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || "Nardi's Attendance"}</strong>
               </p>
             </div>
           </div>
@@ -114,7 +114,7 @@ export async function sendWarningEmail(email: string, studentName: string, daysA
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; margin: 0; font-size: 14px;">
                 Best regards,<br/>
-                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}</strong>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || "Nardi's Attendance"}</strong>
               </p>
             </div>
           </div>
@@ -161,7 +161,7 @@ export async function sendBlockEmail(email: string, studentName: string): Promis
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; margin: 0; font-size: 14px;">
                 Best regards,<br/>
-                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}</strong>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || "Nardi's Attendance"}</strong>
               </p>
             </div>
           </div>
