@@ -4,7 +4,7 @@ import { AttendanceModel } from '@backend/models/Attendance';
 import { BatchModel } from '@backend/models/Batch';
 import { CourseModel } from '@backend/models/Course';
 import { sendWarningEmail, sendBlockEmail } from '@backend/utils/email';
-import { getScheduledClassTime, calculateAttendanceHours } from '@backend/utils/schedule';
+import { getScheduledClassTime, calculateAttendanceHours, getCurrentTimeUTC3 } from '@backend/utils/schedule';
 import { calculateTotalHours } from '@backend/utils/ranking';
 import { getDb } from '@backend/utils/db';
 
@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date in UTC+3
+    const nowUTC3 = getCurrentTimeUTC3();
+    const today = `${nowUTC3.getUTCFullYear()}-${String(nowUTC3.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUTC3.getUTCDate()).padStart(2, '0')}`;
     console.log(`\n🔍 Starting absence check for ${today}...`);
 
     const allStudents = await StudentModel.findAll();
@@ -60,11 +62,12 @@ export async function GET(request: NextRequest) {
         const course = await CourseModel.findById(batch.courseId);
         if (!course || !course.schedule) continue;
 
-        const classTime = getScheduledClassTime(new Date(), course.schedule);
+        const now = new Date();
+        const classTime = getScheduledClassTime(now, course.schedule);
         if (!classTime) continue;
 
         // Calculate hours using scheduled end time (or current time if class hasn't ended)
-        const endTime = new Date() < classTime.end ? new Date() : classTime.end;
+        const endTime = now < classTime.end ? now : classTime.end;
         const hours = calculateAttendanceHours(
           new Date(attendance.checkInTime!),
           null, // No check-out

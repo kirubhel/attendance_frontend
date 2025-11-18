@@ -7,7 +7,8 @@ import {
   getScheduledClassTime, 
   canCheckIn, 
   calculateAttendanceHours,
-  isScheduledDay 
+  isScheduledDay,
+  getCurrentTimeUTC3
 } from '@backend/utils/schedule';
 import { calculateTotalHours } from '@backend/utils/ranking';
 
@@ -81,17 +82,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use local date (not UTC) for today's date string
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    // Get current time in UTC+3 for date string generation
+    const nowUTC3 = getCurrentTimeUTC3();
+    
+    // Use UTC+3 date for today's date string
+    const todayStr = `${nowUTC3.getUTCFullYear()}-${String(nowUTC3.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUTC3.getUTCDate()).padStart(2, '0')}`;
     const existingAttendance = await AttendanceModel.findByStudentAndDate(studentId, todayStr);
 
-    // Use current local time for validation
+    // Get current UTC time for comparisons
     const now = new Date();
 
     // Check schedule if course has one
     if (course.schedule) {
-      const classTime = getScheduledClassTime(today, course.schedule);
+      // Pass current UTC time to get scheduled class times
+      const classTime = getScheduledClassTime(now, course.schedule);
       
       if (!classTime) {
         return NextResponse.json(
@@ -101,6 +105,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate check-in time (30 minutes before class, or during class)
+      // Use current UTC time for comparison (classTime is also in UTC)
       if (!existingAttendance) {
         const checkInValidation = canCheckIn(now, classTime.start, classTime.end);
         if (!checkInValidation.allowed) {
@@ -139,7 +144,7 @@ export async function POST(request: NextRequest) {
         // Calculate attendance hours if course has schedule
         let attendanceHours = 0;
         if (course.schedule && existingAttendance.checkInTime) {
-          const classTime = getScheduledClassTime(today, course.schedule);
+          const classTime = getScheduledClassTime(now, course.schedule);
           if (classTime) {
             attendanceHours = calculateAttendanceHours(
               new Date(existingAttendance.checkInTime),
