@@ -99,6 +99,21 @@ export const studentsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  update: (id: string, data: {
+    fullname: string;
+    phone: string;
+    email: string;
+    nationalId?: string;
+    batchId: string;
+  }) =>
+    apiRequest<any>(`/students/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiRequest<any>(`/students/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Attendance

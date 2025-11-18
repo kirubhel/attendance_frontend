@@ -41,7 +41,7 @@ export async function PUT(
       );
     }
 
-    const course = await CourseModel.findByIdAndUpdate(id, { name, description, schedule });
+    const course = await CourseModel.update(id, { name, description, schedule });
     return NextResponse.json(course);
   } catch (error: any) {
     console.error('Error updating course:', error);
