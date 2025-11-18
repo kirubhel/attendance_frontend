@@ -103,8 +103,13 @@ export const studentsApi = {
 
 // Attendance
 export const attendanceApi = {
-  getAll: (date?: string) =>
-    apiRequest<any[]>(date ? `/attendance?date=${date}` : '/attendance'),
+  getAll: (date: string, filters?: { courseId?: string; batchId?: string }) => {
+    const params = new URLSearchParams();
+    params.append('date', date);
+    if (filters?.courseId) params.append('courseId', filters.courseId);
+    if (filters?.batchId) params.append('batchId', filters.batchId);
+    return apiRequest<any[]>(`/attendance?${params.toString()}`);
+  },
   checkIn: (studentId: string) =>
     apiRequest<any>('/attendance', {
       method: 'POST',
