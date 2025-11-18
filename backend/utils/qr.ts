@@ -5,8 +5,12 @@ export async function generateQRCode(studentId: string): Promise<string> {
     const qrCodeDataURL = await QRCode.toDataURL(studentId, {
       errorCorrectionLevel: 'H',
       type: 'image/png',
-      quality: 0.92,
       margin: 1,
+      width: 300,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
     });
     return qrCodeDataURL;
   } catch (error) {
