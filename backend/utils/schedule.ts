@@ -111,30 +111,44 @@ export function getScheduledClassTime(date: Date, schedule: CourseSchedule): {
 }
 
 /**
- * Check if check-in is allowed (up to 30 minutes before class)
+ * Check if check-in is allowed (up to 30 minutes before class, or during class)
  */
-export function canCheckIn(currentTime: Date, classStartTime: Date): {
+export function canCheckIn(currentTime: Date, classStartTime: Date, classEndTime?: Date): {
   allowed: boolean;
   reason?: string;
 } {
   const thirtyMinutesBefore = new Date(classStartTime);
   thirtyMinutesBefore.setMinutes(thirtyMinutesBefore.getMinutes() - 30);
 
+  // Check if too early (before 30 minutes before class)
   if (currentTime < thirtyMinutesBefore) {
+    const minutesUntilOpen = Math.ceil((thirtyMinutesBefore.getTime() - currentTime.getTime()) / (1000 * 60));
     return {
       allowed: false,
-      reason: `Check-in opens 30 minutes before class. Class starts at ${classStartTime.toLocaleTimeString()}`,
+      reason: `Check-in opens 30 minutes before class (in ${minutesUntilOpen} minutes). Class starts at ${classStartTime.toLocaleTimeString()}`,
     };
   }
 
-  // Allow check-in up to 1 hour after class starts (late check-in)
+  // If class end time is provided, allow check-in until class ends
+  if (classEndTime) {
+    if (currentTime > classEndTime) {
+      return {
+        allowed: false,
+        reason: `Check-in window has closed. Class ended at ${classEndTime.toLocaleTimeString()}`,
+      };
+    }
+    // Allow check-in from 30 min before until class ends
+    return { allowed: true };
+  }
+
+  // Fallback: Allow check-in up to 1 hour after class starts (late check-in)
   const oneHourAfter = new Date(classStartTime);
   oneHourAfter.setHours(oneHourAfter.getHours() + 1);
 
   if (currentTime > oneHourAfter) {
     return {
       allowed: false,
-      reason: 'Check-in window has closed. Class has already started more than 1 hour ago.',
+      reason: `Check-in window has closed. Class started at ${classStartTime.toLocaleTimeString()} and check-in is only allowed up to 1 hour after class starts.`,
     };
   }
 
@@ -167,4 +181,5 @@ export function getWeekdayName(day: number): string {
   const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   return weekdays[day] || 'Unknown';
 }
+
 

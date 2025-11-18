@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Validate check-in time (30 minutes before class)
+      // Validate check-in time (30 minutes before class, or during class)
       if (!existingAttendance) {
-        const checkInValidation = canCheckIn(now, classTime.start);
+        const checkInValidation = canCheckIn(now, classTime.start, classTime.end);
         if (!checkInValidation.allowed) {
           return NextResponse.json(
             { error: checkInValidation.reason },
