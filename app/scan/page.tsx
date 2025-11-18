@@ -56,21 +56,36 @@ export default function ScanPage() {
       
       if (videoRef.current) {
         const video = videoRef.current;
+        
+        // Set stream first
         video.srcObject = stream;
         
         // Set up event handlers
-        const handleLoadedMetadata = () => {
-          video.play()
-            .then(() => {
-              console.log('Video playing successfully');
+        const handleLoadedMetadata = async () => {
+          try {
+            console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+            await video.play();
+            console.log('Video playing successfully');
+            setScanning(true);
+            startQRDetection();
+          } catch (playErr) {
+            console.error('Error playing video:', playErr);
+            setError('Failed to start camera. Please try again.');
+            stopScanning();
+          }
+        };
+
+        const handleCanPlay = async () => {
+          try {
+            if (video.paused) {
+              await video.play();
+              console.log('Video playing (canplay event)');
               setScanning(true);
               startQRDetection();
-            })
-            .catch((playErr) => {
-              console.error('Error playing video:', playErr);
-              setError('Failed to start camera. Please try again.');
-              stopScanning();
-            });
+            }
+          } catch (err) {
+            console.error('Play error on canplay:', err);
+          }
         };
 
         const handleError = (err: Event) => {
@@ -79,23 +94,26 @@ export default function ScanPage() {
           stopScanning();
         };
 
+        // Add multiple event listeners to catch when video is ready
         video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        video.addEventListener('canplay', handleCanPlay, { once: true });
         video.addEventListener('error', handleError);
         
-        // Fallback: if loadedmetadata doesn't fire, try playing anyway
-        setTimeout(() => {
-          if (!scanning && video.readyState >= 2) {
-            video.play()
-              .then(() => {
-                console.log('Video playing (fallback)');
+        // Force play after a short delay as fallback
+        setTimeout(async () => {
+          if (video.srcObject && video.paused) {
+            try {
+              await video.play();
+              console.log('Video playing (timeout fallback)');
+              if (!scanning) {
                 setScanning(true);
                 startQRDetection();
-              })
-              .catch((err) => {
-                console.error('Fallback play error:', err);
-              });
+              }
+            } catch (err) {
+              console.error('Timeout fallback play error:', err);
+            }
           }
-        }, 1000);
+        }, 500);
       }
     } catch (err: any) {
       console.error('Camera error:', err);
@@ -247,26 +265,34 @@ export default function ScanPage() {
             </button>
           ) : (
             <div className="space-y-4">
-              <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3', minHeight: '300px' }}>
+              <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3', minHeight: '300px', position: 'relative' }}>
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover"
                   playsInline
                   autoPlay
                   muted
-                  style={{ display: 'block', width: '100%', height: '100%' }}
+                  style={{ 
+                    display: 'block', 
+                    width: '100%', 
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: '#000'
+                  }}
                 />
                 <canvas ref={canvasRef} className="hidden" />
-                {/* Scanning overlay */}
-                <div className="absolute inset-0 border-4 border-green-500 rounded-lg pointer-events-none">
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500"></div>
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500"></div>
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500"></div>
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500"></div>
-                </div>
+                {/* Scanning overlay - only show when video is playing */}
+                {scanning && videoRef.current && videoRef.current.readyState >= 2 && (
+                  <div className="absolute inset-0 border-4 border-green-500 rounded-lg pointer-events-none z-10">
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500"></div>
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500"></div>
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500"></div>
+                  </div>
+                )}
                 {/* Loading indicator */}
-                {!videoRef.current?.readyState && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                {scanning && (!videoRef.current || videoRef.current.readyState < 2) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 z-20">
                     <div className="text-white text-center">
                       <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                       <p className="text-sm">Initializing camera...</p>
