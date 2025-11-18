@@ -21,13 +21,15 @@ git push origin main
 
 1. Go to [vercel.com](https://vercel.com) and sign in
 2. Click "Add New Project"
-3. Import your GitHub repository
-4. Configure the project:
-   - **Framework Preset**: Next.js
-   - **Root Directory**: `frontend` (if your repo has frontend folder)
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `.next`
-   - **Install Command**: `npm install`
+3. Import your GitHub repository: `kirubhel/attendance_frontend`
+4. **IMPORTANT**: Since your repository IS the frontend folder, you don't need to set a root directory
+5. Configure the project:
+   - **Framework Preset**: Next.js (auto-detected)
+   - **Root Directory**: Leave empty (or set to `.` if prompted)
+   - **Build Command**: `npm run build` (default)
+   - **Output Directory**: `.next` (default)
+   - **Install Command**: `npm install` (default)
+6. Click "Deploy"
 
 ### Option B: Via Vercel CLI
 
