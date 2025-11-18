@@ -53,6 +53,18 @@ export default function ScanPage() {
       setError('');
       setResult(null);
 
+      // First, set scanning to true so the element is rendered
+      setScanning(true);
+
+      // Wait a bit for the DOM to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Check if element exists
+      const element = document.getElementById('qr-reader');
+      if (!element) {
+        throw new Error('Scanner element not found. Please refresh the page.');
+      }
+
       // Get camera ID
       const camId = await getCameraId();
       setCameraId(camId);
@@ -80,12 +92,14 @@ export default function ScanPage() {
         }
       );
 
-      setScanning(true);
       toast.success('Camera started! Point at QR code.');
     } catch (err: any) {
       console.error('Scanner error:', err);
+      setScanning(false); // Reset on error
       let errorMsg = 'Failed to start camera. ';
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      if (err.message?.includes('not found')) {
+        errorMsg = 'Scanner element not found. Please refresh the page.';
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         errorMsg += 'Please allow camera permissions.';
       } else if (err.name === 'NotFoundError') {
         errorMsg += 'No camera found.';
@@ -185,11 +199,13 @@ export default function ScanPage() {
             </button>
           ) : (
             <div className="space-y-4">
-              <div 
-                id="qr-reader" 
-                className="w-full rounded-lg overflow-hidden"
-                style={{ minHeight: '300px' }}
-              />
+              <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
+                <div 
+                  id="qr-reader" 
+                  className="w-full"
+                  style={{ minHeight: '300px' }}
+                />
+              </div>
               <button
                 onClick={stopScanning}
                 className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors font-medium"
