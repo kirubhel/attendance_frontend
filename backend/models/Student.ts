@@ -38,6 +38,20 @@ export class StudentModel {
     return students.map(s => ({ ...s, _id: s._id.toString() })) as StudentType[];
   }
 
+  static async findByCourseId(courseId: string): Promise<StudentType[]> {
+    const db = await getDb();
+    // First, get all batches for this course
+    const batches = await db.collection('batches').find({ courseId }).toArray();
+    const batchIds = batches.map(b => b._id.toString());
+    
+    // Then, get all students in those batches
+    const students = await db.collection('students').find({ 
+      batchId: { $in: batchIds } 
+    }).toArray();
+    
+    return students.map(s => ({ ...s, _id: s._id.toString() })) as StudentType[];
+  }
+
   static async update(id: string, updates: Partial<StudentType>): Promise<void> {
     const db = await getDb();
     await db.collection('students').updateOne(
@@ -60,6 +74,14 @@ export class StudentModel {
 
   static async resetAbsentCount(id: string): Promise<void> {
     await this.update(id, { absentCount: 0 });
+  }
+
+  static async delete(id: string): Promise<void> {
+    const db = await getDb();
+    const result = await db.collection('students').deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
+      throw new Error('Student not found');
+    }
   }
 }
 
