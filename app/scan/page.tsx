@@ -6,18 +6,16 @@ import { isAuthenticated } from '@/lib/auth';
 import { qrApi } from '@/lib/api';
 import Layout from '@/components/Layout';
 import toast from 'react-hot-toast';
+import { Html5Qrcode } from 'html5-qrcode';
 
-// Simple QR code scanner using camera
 export default function ScanPage() {
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [cameraId, setCameraId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -31,165 +29,87 @@ export default function ScanPage() {
     };
   }, [router]);
 
+  const getCameraId = async (): Promise<string> => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      // Prefer back camera on mobile
+      const backCamera = videoDevices.find(device => 
+        device.label.toLowerCase().includes('back') || 
+        device.label.toLowerCase().includes('rear') ||
+        device.label.toLowerCase().includes('environment')
+      );
+      
+      return backCamera?.deviceId || videoDevices[0]?.deviceId || '';
+    } catch (err) {
+      console.error('Error getting camera devices:', err);
+      return '';
+    }
+  };
+
   const startScanning = async () => {
     try {
       setError('');
       setResult(null);
-      
-      // Stop any existing stream first
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
 
-      // Request camera access with better constraints
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' }, // Use back camera on mobile
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
+      // Get camera ID
+      const camId = await getCameraId();
+      setCameraId(camId);
+
+      // Create scanner instance
+      const scanner = new Html5Qrcode('qr-reader');
+      scannerRef.current = scanner;
+
+      // Start scanning
+      await scanner.start(
+        camId || { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
         },
-        audio: false,
-      };
+        (decodedText) => {
+          // QR code detected
+          console.log('QR Code detected:', decodedText);
+          scanQRCode(decodedText);
+        },
+        (errorMessage) => {
+          // Ignore scanning errors (just means no QR code detected yet)
+          // console.log('Scan error:', errorMessage);
+        }
+      );
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        const video = videoRef.current;
-        
-        // Set stream first
-        video.srcObject = stream;
-        
-        // Set up event handlers
-        const handleLoadedMetadata = async () => {
-          try {
-            console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
-            await video.play();
-            console.log('Video playing successfully');
-            setScanning(true);
-            startQRDetection();
-          } catch (playErr) {
-            console.error('Error playing video:', playErr);
-            setError('Failed to start camera. Please try again.');
-            stopScanning();
-          }
-        };
-
-        const handleCanPlay = async () => {
-          try {
-            if (video.paused) {
-              await video.play();
-              console.log('Video playing (canplay event)');
-              setScanning(true);
-              startQRDetection();
-            }
-          } catch (err) {
-            console.error('Play error on canplay:', err);
-          }
-        };
-
-        const handleError = (err: Event) => {
-          console.error('Video error:', err);
-          setError('Camera error. Please refresh and try again.');
-          stopScanning();
-        };
-
-        // Add multiple event listeners to catch when video is ready
-        video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-        video.addEventListener('canplay', handleCanPlay, { once: true });
-        video.addEventListener('error', handleError);
-        
-        // Force play after a short delay as fallback
-        setTimeout(async () => {
-          if (video.srcObject && video.paused) {
-            try {
-              await video.play();
-              console.log('Video playing (timeout fallback)');
-              if (!scanning) {
-                setScanning(true);
-                startQRDetection();
-              }
-            } catch (err) {
-              console.error('Timeout fallback play error:', err);
-            }
-          }
-        }, 500);
-      }
+      setScanning(true);
+      toast.success('Camera started! Point at QR code.');
     } catch (err: any) {
-      console.error('Camera error:', err);
-      let errorMsg = 'Failed to access camera. ';
+      console.error('Scanner error:', err);
+      let errorMsg = 'Failed to start camera. ';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMsg += 'Please allow camera permissions in your browser settings.';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        errorMsg += 'No camera found on this device.';
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        errorMsg += 'Camera is already in use by another application.';
+        errorMsg += 'Please allow camera permissions.';
+      } else if (err.name === 'NotFoundError') {
+        errorMsg += 'No camera found.';
+      } else if (err.name === 'NotReadableError') {
+        errorMsg += 'Camera is in use by another app.';
       } else {
-        errorMsg += err.message || 'Please check your camera settings.';
+        errorMsg += err.message || 'Please try again.';
       }
       setError(errorMsg);
       toast.error(errorMsg);
     }
   };
 
-  const stopScanning = () => {
-    // Clear scanning interval
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      }
+      scannerRef.current = null;
     }
-
-    // Stop all tracks
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
-      streamRef.current = null;
-    }
-
-    // Clear video element
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-      videoRef.current.removeEventListener('loadedmetadata', () => {});
-      videoRef.current.removeEventListener('error', () => {});
-    }
-
     setScanning(false);
-  };
-
-  const startQRDetection = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    scanIntervalRef.current = setInterval(() => {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      
-      if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
-        return;
-      }
-
-      // Only scan if video is actually playing and has dimensions
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        return;
-      }
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Set canvas size to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Draw video frame to canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Get image data for QR code detection
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      // Simple QR code detection placeholder
-      // For production, integrate jsQR or html5-qrcode library here
-      // This would decode the QR code from imageData
-    }, 300); // Check every 300ms
   };
 
   const handleManualInput = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -210,7 +130,7 @@ export default function ScanPage() {
       const response = await qrApi.scan(qrData);
       setResult(response);
       toast.success('QR code scanned successfully!');
-      stopScanning();
+      await stopScanning();
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to process QR code';
       setError(errorMsg);
@@ -265,55 +185,11 @@ export default function ScanPage() {
             </button>
           ) : (
             <div className="space-y-4">
-              <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3', minHeight: '300px', position: 'relative' }}>
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  playsInline
-                  autoPlay
-                  muted
-                  style={{ 
-                    display: 'block', 
-                    width: '100%', 
-                    height: '100%',
-                    minHeight: '300px',
-                    objectFit: 'cover',
-                    backgroundColor: '#000',
-                    zIndex: 1
-                  }}
-                />
-                <canvas ref={canvasRef} className="hidden" />
-                {/* Debug info - remove in production */}
-                {scanning && videoRef.current && (
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs p-2 rounded z-30">
-                    <div>ReadyState: {videoRef.current.readyState}</div>
-                    <div>Paused: {videoRef.current.paused ? 'Yes' : 'No'}</div>
-                    <div>Dimensions: {videoRef.current.videoWidth}x{videoRef.current.videoHeight}</div>
-                    <div>Has Stream: {videoRef.current.srcObject ? 'Yes' : 'No'}</div>
-                  </div>
-                )}
-                {/* Scanning overlay - only show when video is playing */}
-                {scanning && videoRef.current && videoRef.current.readyState >= 2 && !videoRef.current.paused && (
-                  <div className="absolute inset-0 border-4 border-green-500 rounded-lg pointer-events-none z-10">
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500"></div>
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500"></div>
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500"></div>
-                  </div>
-                )}
-                {/* Loading indicator */}
-                {scanning && (!videoRef.current || videoRef.current.readyState < 2 || videoRef.current.paused) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 z-20">
-                    <div className="text-white text-center">
-                      <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                      <p className="text-sm">Initializing camera...</p>
-                      {videoRef.current && (
-                        <p className="text-xs mt-1">State: {videoRef.current.readyState} | Paused: {videoRef.current.paused ? 'Yes' : 'No'}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <div 
+                id="qr-reader" 
+                className="w-full rounded-lg overflow-hidden"
+                style={{ minHeight: '300px' }}
+              />
               <button
                 onClick={stopScanning}
                 className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors font-medium"
@@ -321,7 +197,7 @@ export default function ScanPage() {
                 Stop Scanner
               </button>
               <p className="text-sm text-gray-500 text-center">
-                Point camera at QR code. Ensure good lighting and hold steady.
+                Point camera at QR code. The scanner will automatically detect it.
               </p>
             </div>
           )}
@@ -364,8 +240,8 @@ export default function ScanPage() {
             <li>Click "Start Camera Scanner" and allow camera permissions</li>
             <li>Point your camera at the student's QR code</li>
             <li>Ensure good lighting and hold the device steady</li>
+            <li>The scanner will automatically detect and process the QR code</li>
             <li>If camera doesn't work, use the manual input field above</li>
-            <li>On mobile, the back camera will be used automatically</li>
           </ul>
         </div>
       </div>
