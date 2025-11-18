@@ -101,14 +101,15 @@ export function getScheduledClassTime(date: Date, schedule: CourseSchedule): {
   const [startHour, startMin] = daySchedule.startTime.split(':').map(Number);
   const [endHour, endMin] = daySchedule.endTime.split(':').map(Number);
 
-  // Use local timezone - create date in local time
-  const start = new Date(date);
-  start.setHours(startHour, startMin, 0, 0);
-  start.setSeconds(0, 0);
+  // Get local date components to ensure we're working in local timezone
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
 
-  const end = new Date(date);
-  end.setHours(endHour, endMin, 0, 0);
-  end.setSeconds(0, 0);
+  // Create new Date objects in local timezone explicitly
+  // This ensures times are interpreted in local time (Ethiopia UTC+3)
+  const start = new Date(year, month, day, startHour, startMin, 0, 0);
+  const end = new Date(year, month, day, endHour, endMin, 0, 0);
 
   return { start, end };
 }
