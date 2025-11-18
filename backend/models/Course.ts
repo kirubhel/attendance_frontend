@@ -48,5 +48,42 @@ export class CourseModel {
     if (!course) return null;
     return { ...course, _id: course._id.toString() } as CourseType;
   }
+
+  static async update(id: string, updates: Partial<CourseType>): Promise<CourseType> {
+    const db = await getDb();
+    
+    // Calculate duration for each day if schedule is being updated
+    if (updates.schedule && updates.schedule.days) {
+      for (const day in updates.schedule.days) {
+        const daySchedule = updates.schedule.days[Number(day)];
+        if (!daySchedule.duration && daySchedule.startTime && daySchedule.endTime) {
+          daySchedule.duration = calculateDuration(daySchedule.startTime, daySchedule.endTime);
+        }
+      }
+    }
+    
+    const result = await db.collection('courses').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updates }
+    );
+    
+    if (result.matchedCount === 0) {
+      throw new Error('Course not found');
+    }
+    
+    const updated = await this.findById(id);
+    if (!updated) {
+      throw new Error('Course not found after update');
+    }
+    return updated;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const db = await getDb();
+    const result = await db.collection('courses').deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
+      throw new Error('Course not found');
+    }
+  }
 }
 
