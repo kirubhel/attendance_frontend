@@ -40,10 +40,20 @@ export const authApi = {
 // Courses
 export const coursesApi = {
   getAll: () => apiRequest<any[]>('/courses'),
+  getById: (id: string) => apiRequest<any>(`/courses/${id}`),
   create: (name: string, description?: string, schedule?: any) =>
     apiRequest<any>('/courses', {
       method: 'POST',
       body: JSON.stringify({ name, description, schedule }),
+    }),
+  update: (id: string, name: string, description?: string, schedule?: any) =>
+    apiRequest<any>(`/courses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, description, schedule }),
+    }),
+  delete: (id: string) =>
+    apiRequest<any>(`/courses/${id}`, {
+      method: 'DELETE',
     }),
 };
 

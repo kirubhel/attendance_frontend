@@ -30,6 +30,8 @@ export default function RegisterCoursePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
+  const [editingCourse, setEditingCourse] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -88,9 +90,20 @@ export default function RegisterCoursePage() {
         days: daySchedules,
       };
       
-      await coursesApi.create(name, description, schedule);
-      toast.success('Course created successfully!');
-      setSuccess('Course created successfully!');
+      if (editingCourse) {
+        // Update existing course
+        await coursesApi.update(editingCourse._id, name, description, schedule);
+        toast.success('Course updated successfully!');
+        setSuccess('Course updated successfully!');
+        setEditingCourse(null);
+      } else {
+        // Create new course
+        await coursesApi.create(name, description, schedule);
+        toast.success('Course created successfully!');
+        setSuccess('Course created successfully!');
+      }
+      
+      // Reset form
       setName('');
       setDescription('');
       setDaySchedules({
@@ -100,7 +113,7 @@ export default function RegisterCoursePage() {
       loadCourses();
     } catch (err: any) {
       // Provide user-friendly error messages
-      let errorMsg = 'Failed to create course';
+      let errorMsg = editingCourse ? 'Failed to update course' : 'Failed to create course';
       if (err.message?.includes('timeout') || err.message?.includes('connection')) {
         errorMsg = 'Database connection timeout. Please check your network connection.';
       } else if (err.message?.includes('host not found') || err.message?.includes('DNS')) {
@@ -115,12 +128,75 @@ export default function RegisterCoursePage() {
     }
   };
 
+  const handleEdit = (course: any) => {
+    setEditingCourse(course);
+    setName(course.name);
+    setDescription(course.description || '');
+    
+    // Load schedule
+    if (course.schedule?.days) {
+      setDaySchedules(course.schedule.days);
+    } else if (course.schedule?.weekdays && course.schedule?.startTime && course.schedule?.endTime) {
+      // Convert legacy format to new format
+      const legacySchedule: Record<number, { startTime: string; endTime: string }> = {};
+      course.schedule.weekdays.forEach((day: number) => {
+        legacySchedule[day] = {
+          startTime: course.schedule.startTime,
+          endTime: course.schedule.endTime,
+        };
+      });
+      setDaySchedules(legacySchedule);
+    } else {
+      setDaySchedules({
+        1: { startTime: '09:00', endTime: '11:00' },
+        3: { startTime: '09:00', endTime: '11:00' },
+      });
+    }
+    
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCourse(null);
+    setName('');
+    setDescription('');
+    setDaySchedules({
+      1: { startTime: '09:00', endTime: '11:00' },
+      3: { startTime: '09:00', endTime: '11:00' },
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await coursesApi.delete(id);
+      toast.success('Course deleted successfully!');
+      loadCourses();
+      setDeleteConfirm(null);
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to delete course';
+      toast.error(errorMsg);
+    }
+  };
+
   const selectedDays = Object.keys(daySchedules).map(Number).sort();
 
   return (
     <Layout>
       <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Register Course</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">
+            {editingCourse ? 'Edit Course' : 'Register Course'}
+          </h1>
+          {editingCourse && (
+            <button
+              onClick={handleCancelEdit}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Cancel Edit
+            </button>
+          )}
+        </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -292,7 +368,7 @@ export default function RegisterCoursePage() {
               disabled={loading || selectedDays.length === 0}
               className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Creating...' : 'Create Course'}
+              {loading ? (editingCourse ? 'Updating...' : 'Creating...') : (editingCourse ? 'Update Course' : 'Create Course')}
             </button>
           </form>
         </div>
@@ -301,37 +377,84 @@ export default function RegisterCoursePage() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Existing Courses</h2>
           {courses.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {courses.map((course) => (
-                <div key={course._id} className="border rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900">{course.name}</h3>
-                  {course.description && (
-                    <p className="text-sm text-gray-500 mt-1">{course.description}</p>
-                  )}
-                  {course.schedule && (
-                    <div className="mt-2 text-sm text-gray-600">
-                      {course.schedule.days ? (
-                        <div>
-                          <strong>Schedule:</strong>
-                          <ul className="list-disc list-inside mt-1 space-y-1">
-                            {Object.entries(course.schedule.days).map(([day, daySchedule]: [string, any]) => {
-                              const dayInfo = WEEKDAYS.find(d => d.value === Number(day));
-                              return (
-                                <li key={day}>
-                                  {dayInfo?.label}: {daySchedule.startTime} - {daySchedule.endTime}
-                                </li>
-                              );
-                            })}
-                          </ul>
+                <div key={course._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-lg">{course.name}</h3>
+                      {course.description && (
+                        <p className="text-sm text-gray-500 mt-1">{course.description}</p>
+                      )}
+                      {course.schedule && (
+                        <div className="mt-3 text-sm text-gray-600">
+                          {course.schedule.days ? (
+                            <div>
+                              <strong className="text-gray-700">Schedule:</strong>
+                              <ul className="list-disc list-inside mt-1 space-y-1">
+                                {Object.entries(course.schedule.days).map(([day, daySchedule]: [string, any]) => {
+                                  const dayInfo = WEEKDAYS.find(d => d.value === Number(day));
+                                  return (
+                                    <li key={day} className="text-gray-600">
+                                      {dayInfo?.label}: {daySchedule.startTime} - {daySchedule.endTime}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          ) : course.schedule.weekdays ? (
+                            <p>
+                              <strong className="text-gray-700">Schedule:</strong> {course.schedule.weekdays.map((d: number) => 
+                                WEEKDAYS.find(w => w.value === d)?.label
+                              ).join(', ')} 
+                              {' '}from {course.schedule.startTime} to {course.schedule.endTime}
+                            </p>
+                          ) : null}
                         </div>
-                      ) : course.schedule.weekdays ? (
-                        <p>
-                          <strong>Schedule:</strong> {course.schedule.weekdays.map((d: number) => 
-                            WEEKDAYS.find(w => w.value === d)?.label
-                          ).join(', ')} 
-                          {' '}from {course.schedule.startTime} to {course.schedule.endTime}
-                        </p>
-                      ) : null}
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => handleEdit(course)}
+                        className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                        title="Edit course"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(course._id)}
+                        className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                        title="Delete course"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Delete Confirmation */}
+                  {deleteConfirm === course._id && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800 mb-3">
+                        Are you sure you want to delete <strong>{course.name}</strong>? This action cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDelete(course._id)}
+                          className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                        >
+                          Yes, Delete
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
