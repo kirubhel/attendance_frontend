@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { coursesApi, batchesApi, studentsApi } from '@/lib/api';
 import Layout from '@/components/Layout';
+import toast from 'react-hot-toast';
 
 export default function RegisterStudentPage() {
   const router = useRouter();
@@ -80,7 +81,9 @@ export default function RegisterStudentPage() {
         nationalId: formData.nationalId || undefined,
         batchId: formData.batchId,
       });
-      setSuccess('Student registered successfully! QR code has been sent to their email.');
+      const successMsg = 'Student registered successfully! QR code has been sent to their email.';
+      toast.success(successMsg);
+      setSuccess(successMsg);
       setFormData({
         fullname: '',
         phone: '',
@@ -90,7 +93,9 @@ export default function RegisterStudentPage() {
       });
       setSelectedCourseId('');
     } catch (err: any) {
-      setError(err.message || 'Failed to register student');
+      const errorMsg = err.message || 'Failed to register student';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -125,7 +130,7 @@ export default function RegisterStudentPage() {
                 value={formData.fullname}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="John Doe"
               />
             </div>
@@ -141,7 +146,7 @@ export default function RegisterStudentPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="+1234567890"
               />
             </div>
@@ -157,7 +162,7 @@ export default function RegisterStudentPage() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="john@example.com"
               />
             </div>
@@ -172,7 +177,7 @@ export default function RegisterStudentPage() {
                 type="text"
                 value={formData.nationalId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="123456789"
               />
             </div>
@@ -187,7 +192,7 @@ export default function RegisterStudentPage() {
                 value={selectedCourseId}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select a course</option>
                 {courses.map((course) => (
@@ -209,7 +214,7 @@ export default function RegisterStudentPage() {
                 onChange={handleChange}
                 required
                 disabled={!selectedCourseId}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">Select a batch</option>
                 {batches.map((batch) => (

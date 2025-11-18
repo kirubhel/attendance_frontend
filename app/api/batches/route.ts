@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BatchModel } from '../../../../backend/models/Batch';
+import { BatchModel } from '@backend/models/Batch';
 
 export async function GET(request: NextRequest) {
   try {

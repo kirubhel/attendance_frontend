@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { StudentModel } from '../../../../backend/models/Student';
-import { AttendanceModel } from '../../../../backend/models/Attendance';
-import { BatchModel } from '../../../../backend/models/Batch';
-import { CourseModel } from '../../../../backend/models/Course';
-import { getDb } from '../../../../backend/utils/db';
+import { StudentModel } from '@backend/models/Student';
+import { AttendanceModel } from '@backend/models/Attendance';
+import { BatchModel } from '@backend/models/Batch';
+import { CourseModel } from '@backend/models/Course';
+import { getDb } from '@backend/utils/db';
 
 export async function GET() {
   try {

@@ -8,18 +8,28 @@ import Layout from '@/components/Layout';
 
 export default function AttendancePage() {
   const router = useRouter();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // Initialize with empty string to avoid hydration mismatch, set in useEffect
+  const [date, setDate] = useState('');
   const [attendance, setAttendance] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Set date only on client side to avoid hydration mismatch
+    if (typeof window !== 'undefined' && !date) {
+      setDate(new Date().toISOString().split('T')[0]);
+    }
+  }, [date]);
+
+  useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
-    loadData();
+    if (date) {
+      loadData();
+    }
   }, [router, date]);
 
   const loadData = async () => {
@@ -72,7 +82,7 @@ export default function AttendancePage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -86,7 +96,7 @@ export default function AttendancePage() {
         {/* Present Students */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Present Students ({attendance.filter((a) => a.status === 'IN').length})
+            Attendance Records ({attendance.length})
           </h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -99,14 +109,19 @@ export default function AttendancePage() {
                     Check-in Time
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Check-out Time
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hours
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {attendance.filter((a) => a.status === 'IN').length > 0 ? (
+                {attendance.length > 0 ? (
                   attendance
-                    .filter((a) => a.status === 'IN')
                     .map((record) => (
                       <tr key={record._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -117,17 +132,33 @@ export default function AttendancePage() {
                             ? new Date(record.checkInTime).toLocaleString()
                             : '-'}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {record.checkOutTime
+                            ? new Date(record.checkOutTime).toLocaleString()
+                            : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {record.attendanceHours
+                            ? `${record.attendanceHours.toFixed(2)} hrs`
+                            : '-'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            IN
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              record.status === 'IN'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {record.status}
                           </span>
                         </td>
                       </tr>
                     ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
-                      No students present
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                      No attendance records for this date
                     </td>
                   </tr>
                 )}

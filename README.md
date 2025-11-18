@@ -1,4 +1,4 @@
-# Nardi System - Frontend
+# Attendance System - Frontend
 
 Attendance & Student Management Platform - Frontend Application
 

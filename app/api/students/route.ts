@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { StudentModel } from '../../../../backend/models/Student';
-import { generateQRCode } from '../../../../backend/utils/qr';
-import { sendQRCodeEmail } from '../../../../backend/utils/email';
+import { StudentModel } from '@backend/models/Student';
+import { generateQRCode } from '@backend/utils/qr';
+import { sendQRCodeEmail } from '@backend/utils/email';
 
 export async function GET(request: NextRequest) {
   try {

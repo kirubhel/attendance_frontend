@@ -1,10 +1,46 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { dashboardApi } from '@/lib/api';
 
 export default function LandingPage() {
   const router = useRouter();
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    presentToday: 0,
+    attendanceRate: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch real stats from API
+    const fetchStats = async () => {
+      try {
+        const data = await dashboardApi.getStats();
+        const total = data.stats?.totalStudents || 0;
+        const active = data.stats?.activeStudents || 0;
+        const present = data.stats?.presentToday || 0;
+        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+        setStats({
+          totalStudents: total,
+          activeStudents: active,
+          presentToday: present,
+          attendanceRate: rate,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        // Keep default values on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
@@ -13,9 +49,16 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Nardi System
-              </h1>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  Attendance System
+                </h1>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <Link
@@ -26,7 +69,7 @@ export default function LandingPage() {
               </Link>
               <button
                 onClick={() => router.push('/login')}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-md hover:shadow-lg"
               >
                 Get Started
               </button>
@@ -51,7 +94,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => router.push('/login')}
-              className="bg-indigo-600 text-white px-8 py-4 rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-lg shadow-lg hover:shadow-xl"
+              className="bg-indigo-600 text-white px-8 py-4 rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
             >
               Start Free Trial
             </button>
@@ -66,23 +109,56 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Hero Image/Illustration */}
+        {/* Hero Image/Illustration with Real Data */}
         <div className="mt-16 flex justify-center">
           <div className="relative w-full max-w-4xl">
             <div className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-2xl p-8 shadow-2xl">
               <div className="bg-white rounded-lg p-6 shadow-lg">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-indigo-50 p-4 rounded-lg">
-                    <div className="text-3xl font-bold text-indigo-600">1,234</div>
-                    <div className="text-sm text-gray-600">Total Students</div>
+                  <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100">
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-indigo-200 rounded w-20 mb-2"></div>
+                        <div className="h-4 bg-indigo-200 rounded w-24"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-4xl font-bold text-indigo-600 mb-1">
+                          {stats.totalStudents.toLocaleString()}
+                        </div>
+                        <div className="text-sm text-gray-600 font-medium">Total Students</div>
+                      </>
+                    )}
                   </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-3xl font-bold text-green-600">98%</div>
-                    <div className="text-sm text-gray-600">Attendance Rate</div>
+                  <div className="bg-green-50 p-6 rounded-lg border border-green-100">
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-green-200 rounded w-16 mb-2"></div>
+                        <div className="h-4 bg-green-200 rounded w-28"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-4xl font-bold text-green-600 mb-1">
+                          {stats.attendanceRate}%
+                        </div>
+                        <div className="text-sm text-gray-600 font-medium">Attendance Rate</div>
+                      </>
+                    )}
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="text-3xl font-bold text-purple-600">24/7</div>
-                    <div className="text-sm text-gray-600">Available</div>
+                  <div className="bg-purple-50 p-6 rounded-lg border border-purple-100">
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-purple-200 rounded w-16 mb-2"></div>
+                        <div className="h-4 bg-purple-200 rounded w-20"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-4xl font-bold text-purple-600 mb-1">
+                          {stats.presentToday}
+                        </div>
+                        <div className="text-sm text-gray-600 font-medium">Present Today</div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -232,7 +308,7 @@ export default function LandingPage() {
             Ready to Transform Your Attendance Management?
           </h2>
           <p className="text-xl text-indigo-100 mb-8">
-            Join hundreds of educators who are already using Nardi System to streamline their attendance tracking.
+            Join hundreds of educators who are already using Attendance System to streamline their attendance tracking.
           </p>
           <button
             onClick={() => router.push('/login')}
@@ -248,7 +324,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-white text-lg font-semibold mb-4">Nardi System</h3>
+              <h3 className="text-white text-lg font-semibold mb-4">Attendance System</h3>
               <p className="text-sm">
                 Modern attendance management for educational institutions.
               </p>
@@ -276,11 +352,10 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>&copy; 2024 Nardi System. All rights reserved.</p>
+            <p>&copy; 2024 Attendance System. All rights reserved.</p>
           </div>
         </div>
       </footer>
     </div>
   );
 }
-

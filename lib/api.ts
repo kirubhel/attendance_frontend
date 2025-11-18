@@ -30,20 +30,20 @@ export async function apiRequest<T>(
 
 // Auth
 export const authApi = {
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     apiRequest<{ token: string; user: any }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }),
 };
 
 // Courses
 export const coursesApi = {
   getAll: () => apiRequest<any[]>('/courses'),
-  create: (name: string, description?: string) =>
+  create: (name: string, description?: string, schedule?: any) =>
     apiRequest<any>('/courses', {
       method: 'POST',
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ name, description, schedule }),
     }),
 };
 
@@ -101,10 +101,16 @@ export const dashboardApi = {
   getStats: () => apiRequest<any>('/dashboard'),
 };
 
+// Ranking
+export const rankingApi = {
+  getRankings: () => apiRequest<any[]>('/students/ranking'),
+};
+
 // Health/Connection Test
 export async function testDatabaseConnection(): Promise<{
   success: boolean;
   message: string;
+  details?: string;
 }> {
   try {
     const response = await fetch('/api/health');
@@ -114,17 +120,20 @@ export async function testDatabaseConnection(): Promise<{
       return {
         success: true,
         message: 'Database connection successful',
+        details: data.timestamp,
       };
     } else {
       return {
         success: false,
         message: data.error || 'Database connection failed',
+        details: data.timestamp,
       };
     }
   } catch (error) {
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Network or server error occurred',
     };
   }
 }

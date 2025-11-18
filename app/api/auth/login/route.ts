@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserByEmail, comparePassword, generateToken } from '../../../../../backend/utils/auth';
+import { getUserByUsername, comparePassword, generateToken } from '@backend/utils/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { username, password } = await request.json();
 
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Username and password are required' },
         { status: 400 }
       );
     }
 
-    const user = await getUserByEmail(email);
+    const user = await getUserByUsername(username);
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       token,
       user: {
         id: user._id,
+        username: user.username,
         email: user.email,
         role: user.role,
       },

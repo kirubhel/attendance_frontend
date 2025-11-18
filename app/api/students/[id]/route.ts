@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { StudentModel } from '../../../../../backend/models/Student';
+import { StudentModel } from '@backend/models/Student';
 
 export async function GET(
   request: NextRequest,

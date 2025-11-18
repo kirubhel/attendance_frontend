@@ -89,7 +89,7 @@ export default function RegisterBatchPage() {
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select a course</option>
                 {courses.map((course) => (
@@ -110,7 +110,7 @@ export default function RegisterBatchPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="e.g., Batch A, Batch B"
               />
             </div>

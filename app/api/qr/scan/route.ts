@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { StudentModel } from '../../../../../backend/models/Student';
-import { AttendanceModel } from '../../../../../backend/models/Attendance';
+import { StudentModel } from '@backend/models/Student';
+import { AttendanceModel } from '@backend/models/Attendance';
+import { BatchModel } from '@backend/models/Batch';
+import { CourseModel } from '@backend/models/Course';
+import { 
+  getScheduledClassTime, 
+  canCheckIn, 
+  calculateAttendanceHours 
+} from '@backend/utils/schedule';
+import { calculateTotalHours } from '@backend/utils/ranking';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,16 +37,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const existingAttendance = await AttendanceModel.findByStudentAndDate(student._id!, today);
+    // Get batch and course to check schedule
+    const batch = await BatchModel.findById(student.batchId);
+    if (!batch) {
+      return NextResponse.json(
+        { error: 'Batch not found' },
+        { status: 404 }
+      );
+    }
+
+    const course = await CourseModel.findById(batch.courseId);
+    if (!course) {
+      return NextResponse.json(
+        { error: 'Course not found' },
+        { status: 404 }
+      );
+    }
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const existingAttendance = await AttendanceModel.findByStudentAndDate(student._id!, todayStr);
 
     const now = new Date();
+
+    // Check schedule if course has one
+    if (course.schedule) {
+      const classTime = getScheduledClassTime(today, course.schedule);
+      
+      if (!classTime) {
+        return NextResponse.json(
+          { error: 'No class scheduled for today' },
+          { status: 400 }
+        );
+      }
+
+      // Validate check-in time (30 minutes before class)
+      if (!existingAttendance) {
+        const checkInValidation = canCheckIn(now, classTime.start);
+        if (!checkInValidation.allowed) {
+          return NextResponse.json(
+            { error: checkInValidation.reason },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     if (!existingAttendance) {
       // First scan of the day - mark IN
       const attendance = await AttendanceModel.create({
         studentId: student._id!,
-        date: today,
+        date: todayStr,
         status: 'IN',
         checkInTime: now,
       });
@@ -62,8 +111,30 @@ export async function POST(request: NextRequest) {
     } else {
       // Already checked in today
       if (existingAttendance.status === 'IN') {
-        // Mark OUT
-        await AttendanceModel.updateStatus(existingAttendance._id!, 'OUT', now);
+        // Mark OUT (optional check-out)
+        const checkOutTime = now;
+        
+        // Calculate attendance hours if course has schedule
+        let attendanceHours = 0;
+        if (course.schedule && existingAttendance.checkInTime) {
+          const classTime = getScheduledClassTime(today, course.schedule);
+          if (classTime) {
+            attendanceHours = calculateAttendanceHours(
+              new Date(existingAttendance.checkInTime),
+              checkOutTime,
+              classTime.end
+            );
+            
+            // Update attendance with hours
+            await AttendanceModel.updateAttendanceHours(existingAttendance._id!, attendanceHours);
+          }
+        }
+        
+        await AttendanceModel.updateStatus(existingAttendance._id!, 'OUT', checkOutTime);
+        
+        // Update student's total hours
+        await calculateTotalHours();
+        
         return NextResponse.json({
           success: true,
           student: {
@@ -73,7 +144,8 @@ export async function POST(request: NextRequest) {
           attendance: {
             ...existingAttendance,
             status: 'OUT',
-            checkOutTime: now,
+            checkOutTime: checkOutTime,
+            attendanceHours,
             message: 'Checked out successfully',
           },
         });
@@ -93,4 +165,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
