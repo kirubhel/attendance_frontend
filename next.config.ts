@@ -6,14 +6,14 @@ const nextConfig: NextConfig = {
   // Turbopack configuration for Next.js 16
   turbopack: {
     resolveAlias: {
-      '@backend': path.resolve(__dirname, '../backend'),
+      '@backend': path.resolve(__dirname, './backend'),
     },
   },
   // Webpack fallback for compatibility
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@backend': path.resolve(__dirname, '../backend'),
+      '@backend': path.resolve(__dirname, './backend'),
     };
     
     // Prioritize frontend node_modules over backend node_modules
