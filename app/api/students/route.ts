@@ -7,9 +7,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const batchId = searchParams.get('batchId');
+    const courseId = searchParams.get('courseId');
 
     if (batchId) {
       const students = await StudentModel.findByBatchId(batchId);
+      return NextResponse.json(students);
+    }
+
+    if (courseId) {
+      const students = await StudentModel.findByCourseId(courseId);
       return NextResponse.json(students);
     }
 

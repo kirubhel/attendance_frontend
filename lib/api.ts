@@ -61,17 +61,32 @@ export const coursesApi = {
 export const batchesApi = {
   getAll: (courseId?: string) =>
     apiRequest<any[]>(courseId ? `/batches?courseId=${courseId}` : '/batches'),
+  getById: (id: string) => apiRequest<any>(`/batches/${id}`),
   create: (name: string, courseId: string) =>
     apiRequest<any>('/batches', {
       method: 'POST',
       body: JSON.stringify({ name, courseId }),
     }),
+  update: (id: string, name: string, courseId: string) =>
+    apiRequest<any>(`/batches/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, courseId }),
+    }),
+  delete: (id: string) =>
+    apiRequest<any>(`/batches/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Students
 export const studentsApi = {
-  getAll: (batchId?: string) =>
-    apiRequest<any[]>(batchId ? `/students?batchId=${batchId}` : '/students'),
+  getAll: (filters?: { batchId?: string; courseId?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.batchId) params.append('batchId', filters.batchId);
+    if (filters?.courseId) params.append('courseId', filters.courseId);
+    const query = params.toString();
+    return apiRequest<any[]>(query ? `/students?${query}` : '/students');
+  },
   getById: (id: string) => apiRequest<any>(`/students/${id}`),
   create: (data: {
     fullname: string;

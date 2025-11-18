@@ -23,6 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: '/register/course', label: 'Register Course' },
     { href: '/register/batch', label: 'Register Batch' },
     { href: '/register/student', label: 'Register Student' },
+    { href: '/students', label: 'Student List' },
     { href: '/attendance', label: 'Attendance List' },
     { href: '/ranking', label: 'Rankings' },
     { href: '/scan', label: 'QR Scan' },
