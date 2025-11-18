@@ -15,8 +15,18 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const courseId = searchParams.get('courseId');
+    const batchId = searchParams.get('batchId');
 
-    const attendance = await AttendanceModel.findByDate(date);
+    let attendance;
+    if (batchId) {
+      attendance = await AttendanceModel.findByDateAndBatch(date, batchId);
+    } else if (courseId) {
+      attendance = await AttendanceModel.findByDateAndCourse(date, courseId);
+    } else {
+      attendance = await AttendanceModel.findByDate(date);
+    }
+    
     return NextResponse.json(attendance);
   } catch (error) {
     console.error('Error fetching attendance:', error);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { attendanceApi, studentsApi } from '@/lib/api';
+import { attendanceApi, studentsApi, coursesApi, batchesApi } from '@/lib/api';
 import Layout from '@/components/Layout';
 
 export default function AttendancePage() {
@@ -12,6 +12,10 @@ export default function AttendancePage() {
   const [date, setDate] = useState('');
   const [attendance, setAttendance] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [filterCourseId, setFilterCourseId] = useState('');
+  const [filterBatchId, setFilterBatchId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -27,17 +31,57 @@ export default function AttendancePage() {
       router.push('/login');
       return;
     }
+    loadCourses();
+  }, [router]);
+
+  useEffect(() => {
+    if (filterCourseId) {
+      loadBatches(filterCourseId);
+    } else {
+      setBatches([]);
+      setFilterBatchId('');
+    }
+  }, [filterCourseId]);
+
+  useEffect(() => {
     if (date) {
       loadData();
     }
-  }, [router, date]);
+  }, [date, filterCourseId, filterBatchId]);
+
+  const loadCourses = async () => {
+    try {
+      const data = await coursesApi.getAll();
+      setCourses(data);
+    } catch (err: any) {
+      console.error('Error loading courses:', err);
+    }
+  };
+
+  const loadBatches = async (courseId: string) => {
+    try {
+      const data = await batchesApi.getAll(courseId);
+      setBatches(data);
+      // Reset batch filter if current batch is not in the new list
+      if (filterBatchId && !data.find((b: any) => b._id === filterBatchId)) {
+        setFilterBatchId('');
+      }
+    } catch (err: any) {
+      console.error('Error loading batches:', err);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
+    setError('');
     try {
+      const filters: { courseId?: string; batchId?: string } = {};
+      if (filterCourseId) filters.courseId = filterCourseId;
+      if (filterBatchId) filters.batchId = filterBatchId;
+
       const [attendanceData, studentsData] = await Promise.all([
-        attendanceApi.getAll(date),
-        studentsApi.getAll(),
+        attendanceApi.getAll(date, filters),
+        studentsApi.getAll(filters),
       ]);
       setAttendance(attendanceData);
       setStudents(studentsData);
@@ -71,19 +115,76 @@ export default function AttendancePage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-4">
           <h1 className="text-3xl font-bold text-gray-900">Attendance List</h1>
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-              Select Date
-            </label>
-            <input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
+          
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                  Date
+                </label>
+                <input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
+                  Course
+                </label>
+                <select
+                  id="course"
+                  value={filterCourseId}
+                  onChange={(e) => {
+                    setFilterCourseId(e.target.value);
+                    setFilterBatchId('');
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">All Courses</option>
+                  {courses.map((course) => (
+                    <option key={course._id} value={course._id}>
+                      {course.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="batch" className="block text-sm font-medium text-gray-700 mb-1">
+                  Batch
+                </label>
+                <select
+                  id="batch"
+                  value={filterBatchId}
+                  onChange={(e) => setFilterBatchId(e.target.value)}
+                  disabled={!filterCourseId}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">All Batches</option>
+                  {batches.map((batch) => (
+                    <option key={batch._id} value={batch._id}>
+                      {batch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setFilterCourseId('');
+                    setFilterBatchId('');
+                  }}
+                  className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
