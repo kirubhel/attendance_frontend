@@ -64,5 +64,39 @@ export class AttendanceModel {
       { $set: { attendanceHours: hours } }
     );
   }
+
+  static async findByDateAndBatch(date: string, batchId: string): Promise<AttendanceType[]> {
+    const db = await getDb();
+    // Get all students in the batch
+    const students = await db.collection('students').find({ batchId }).toArray();
+    const studentIds = students.map(s => s._id.toString());
+    
+    // Get attendance for those students on the date
+    const attendance = await db.collection('attendance').find({
+      date,
+      studentId: { $in: studentIds }
+    }).toArray();
+    return attendance.map(a => ({ ...a, _id: a._id.toString() })) as AttendanceType[];
+  }
+
+  static async findByDateAndCourse(date: string, courseId: string): Promise<AttendanceType[]> {
+    const db = await getDb();
+    // Get all batches for the course
+    const batches = await db.collection('batches').find({ courseId }).toArray();
+    const batchIds = batches.map(b => b._id.toString());
+    
+    // Get all students in those batches
+    const students = await db.collection('students').find({ 
+      batchId: { $in: batchIds } 
+    }).toArray();
+    const studentIds = students.map(s => s._id.toString());
+    
+    // Get attendance for those students on the date
+    const attendance = await db.collection('attendance').find({
+      date,
+      studentId: { $in: studentIds }
+    }).toArray();
+    return attendance.map(a => ({ ...a, _id: a._id.toString() })) as AttendanceType[];
+  }
 }
 
