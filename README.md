@@ -1,51 +1,133 @@
 # Attendance System - Frontend
 
-Attendance & Student Management Platform - Frontend Application
+Modern attendance and student management platform built with Next.js 16.
 
-Built with Next.js 14, TypeScript, and Tailwind CSS.
+## Project Structure
+
+```
+frontend/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes (backend endpoints)
+│   ├── dashboard/         # Dashboard page
+│   ├── login/             # Login page
+│   ├── register/          # Registration pages
+│   └── ...
+├── backend/               # Backend models and utilities
+│   ├── models/           # Database models
+│   ├── utils/            # Utilities (auth, db, email, etc.)
+│   └── types/             # TypeScript types
+├── components/            # React components
+├── lib/                   # Client-side utilities
+└── scripts/               # Utility scripts
+```
 
 ## Features
 
-- Admin Dashboard
-- Course & Batch Registration
-- Student Registration with QR Codes
-- Attendance Tracking
-- QR Code Scanner (Mobile-Responsive)
+- ✅ Course scheduling with different times per weekday
+- ✅ Student registration with QR code generation
+- ✅ QR code scanning for attendance
+- ✅ Automatic absence tracking and email notifications
+- ✅ Student ranking based on attendance hours
+- ✅ Mobile-responsive design
+- ✅ Toast notifications
+- ✅ Professional dashboard UI
 
-## Setup
+## Tech Stack
 
-1. Install dependencies:
+- **Framework**: Next.js 16
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: MongoDB Atlas
+- **Authentication**: JWT
+- **Notifications**: react-hot-toast
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- MongoDB Atlas account
+- npm or yarn
+
+### Installation
+
 ```bash
+# Install dependencies
 npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your MongoDB URI and other configs
 ```
 
-2. Create `.env.local` file:
+### Environment Variables
+
+Create `.env.local` with:
+
 ```env
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-RESEND_API_KEY=your_resend_api_key
-EMAIL_FROM=your_email@domain.com
-CRON_SECRET=your_cron_secret
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/attendance?retryWrites=true&w=majority
+JWT_SECRET=your-secret-key-here
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=noreply@yourdomain.com
+SMTP_FROM_NAME=Attendance System
+SMTP_USE_TLS=true
 ```
 
-3. Create admin user:
-```bash
-node scripts/create-admin.js
-```
+### Development
 
-4. Run development server:
 ```bash
+# Start development server
 npm run dev
+
+# Seed admin user
+npm run seed:admin
+
+# Test database connection
+npm run test:db
 ```
 
-Visit `http://localhost:3000`
+### Build
+
+```bash
+npm run build
+npm start
+```
 
 ## Deployment
 
-Deploy to Vercel:
-1. Push to GitHub
+See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for detailed deployment instructions.
+
+### Quick Deploy to Vercel
+
+1. Push code to GitHub
 2. Import project in Vercel
 3. Add environment variables
 4. Deploy!
 
-See main README.md for full documentation.
+## API Routes
+
+All API routes are in `app/api/`:
+
+- `/api/auth/login` - Admin login
+- `/api/courses` - Course management
+- `/api/batches` - Batch management
+- `/api/students` - Student management
+- `/api/attendance` - Attendance tracking
+- `/api/qr/scan` - QR code scanning
+- `/api/cron/check-absence` - Daily absence check (cron)
+- `/api/students/ranking` - Student rankings
+
+## Admin Credentials
+
+Default admin user (after seeding):
+- Username: `nardi`
+- Password: `P@ssw0rd`
+
+**⚠️ Change these in production!**
+
+## License
+
+MIT
