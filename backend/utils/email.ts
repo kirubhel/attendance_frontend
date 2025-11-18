@@ -36,13 +36,13 @@ export async function sendQRCodeEmail(
     const buffer = Buffer.from(base64Data, 'base64');
 
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Nardi System'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      from: `"${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
       to: email,
       subject: 'Your QR Code for Attendance',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0;">Welcome to Nardi System!</h1>
+            <h1 style="color: white; margin: 0;">Welcome to Nardi's Attendance!</h1>
           </div>
           <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
             <h2 style="color: #1f2937; margin-top: 0;">Hello ${studentName}!</h2>
@@ -60,7 +60,7 @@ export async function sendQRCodeEmail(
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; margin: 0; font-size: 14px;">
                 Best regards,<br/>
-                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi System'}</strong>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}</strong>
               </p>
             </div>
           </div>
@@ -90,7 +90,7 @@ export async function sendWarningEmail(email: string, studentName: string, daysA
 
   try {
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Nardi System'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      from: `"${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
       to: email,
       subject: 'Attendance Warning - Action Required',
       html: `
@@ -114,7 +114,7 @@ export async function sendWarningEmail(email: string, studentName: string, daysA
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; margin: 0; font-size: 14px;">
                 Best regards,<br/>
-                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi System'}</strong>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}</strong>
               </p>
             </div>
           </div>
@@ -137,7 +137,7 @@ export async function sendBlockEmail(email: string, studentName: string): Promis
 
   try {
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Nardi System'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
+      from: `"${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}" <${process.env.SMTP_FROM || process.env.SMTP_USERNAME}>`,
       to: email,
       subject: 'Account Blocked - Attendance Violation',
       html: `
@@ -161,7 +161,7 @@ export async function sendBlockEmail(email: string, studentName: string): Promis
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; margin: 0; font-size: 14px;">
                 Best regards,<br/>
-                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi System'}</strong>
+                <strong style="color: #1f2937;">${process.env.SMTP_FROM_NAME || 'Nardi's Attendance'}</strong>
               </p>
             </div>
           </div>

@@ -85,7 +85,7 @@ export function getScheduledWeekdays(schedule: CourseSchedule): number[] {
 }
 
 /**
- * Get the scheduled class time for a given date
+ * Get the scheduled class time for a given date (using local timezone)
  */
 export function getScheduledClassTime(date: Date, schedule: CourseSchedule): {
   start: Date;
@@ -101,11 +101,14 @@ export function getScheduledClassTime(date: Date, schedule: CourseSchedule): {
   const [startHour, startMin] = daySchedule.startTime.split(':').map(Number);
   const [endHour, endMin] = daySchedule.endTime.split(':').map(Number);
 
+  // Use local timezone - create date in local time
   const start = new Date(date);
   start.setHours(startHour, startMin, 0, 0);
+  start.setSeconds(0, 0);
 
   const end = new Date(date);
   end.setHours(endHour, endMin, 0, 0);
+  end.setSeconds(0, 0);
 
   return { start, end };
 }

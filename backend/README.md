@@ -1,4 +1,4 @@
-# Nardi System - Backend
+# Nardi's Attendance - Backend
 
 Attendance & Student Management Platform - Backend Models & Utilities
 
