@@ -276,13 +276,24 @@ export default function ScanPage() {
                     display: 'block', 
                     width: '100%', 
                     height: '100%',
+                    minHeight: '300px',
                     objectFit: 'cover',
-                    backgroundColor: '#000'
+                    backgroundColor: '#000',
+                    zIndex: 1
                   }}
                 />
                 <canvas ref={canvasRef} className="hidden" />
+                {/* Debug info - remove in production */}
+                {scanning && videoRef.current && (
+                  <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs p-2 rounded z-30">
+                    <div>ReadyState: {videoRef.current.readyState}</div>
+                    <div>Paused: {videoRef.current.paused ? 'Yes' : 'No'}</div>
+                    <div>Dimensions: {videoRef.current.videoWidth}x{videoRef.current.videoHeight}</div>
+                    <div>Has Stream: {videoRef.current.srcObject ? 'Yes' : 'No'}</div>
+                  </div>
+                )}
                 {/* Scanning overlay - only show when video is playing */}
-                {scanning && videoRef.current && videoRef.current.readyState >= 2 && (
+                {scanning && videoRef.current && videoRef.current.readyState >= 2 && !videoRef.current.paused && (
                   <div className="absolute inset-0 border-4 border-green-500 rounded-lg pointer-events-none z-10">
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500"></div>
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500"></div>
@@ -291,11 +302,14 @@ export default function ScanPage() {
                   </div>
                 )}
                 {/* Loading indicator */}
-                {scanning && (!videoRef.current || videoRef.current.readyState < 2) && (
+                {scanning && (!videoRef.current || videoRef.current.readyState < 2 || videoRef.current.paused) && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 z-20">
                     <div className="text-white text-center">
                       <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                       <p className="text-sm">Initializing camera...</p>
+                      {videoRef.current && (
+                        <p className="text-xs mt-1">State: {videoRef.current.readyState} | Paused: {videoRef.current.paused ? 'Yes' : 'No'}</p>
+                      )}
                     </div>
                   </div>
                 )}
