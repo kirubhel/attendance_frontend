@@ -6,8 +6,8 @@ import { CourseModel } from '@backend/models/Course';
 import { 
   getScheduledClassTime, 
   canCheckIn, 
-  calculateAttendanceHours,
-  getCurrentTimeUTC3
+  getCurrentTimeUTC3,
+  getDaySchedule
 } from '@backend/utils/schedule';
 import { calculateTotalHours } from '@backend/utils/ranking';
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!existingAttendance) {
-      // First scan of the day - mark IN
+      // First scan of the day - mark IN and assign full course hours
       // Re-check for existing attendance right before creating to prevent race conditions
       // This handles cases where two requests arrive simultaneously
       const doubleCheckAttendance = await AttendanceModel.findByStudentAndDate(student._id!, todayStr);
@@ -100,7 +100,30 @@ export async function POST(request: NextRequest) {
         // Another request already created attendance, handle as existing attendance
         existingAttendance = doubleCheckAttendance;
       } else {
-        // Safe to create new attendance
+        // Calculate attendance hours from course schedule duration
+        let attendanceHours = 0;
+        if (course.schedule) {
+          const classTime = getScheduledClassTime(now, course.schedule);
+          if (classTime) {
+            // Get the day schedule to get duration
+            const utc3Offset = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+            const dateInUTC3 = new Date(now.getTime() + utc3Offset);
+            const dayOfWeek = dateInUTC3.getUTCDay();
+            const daySchedule = getDaySchedule(dayOfWeek, course.schedule);
+            
+            if (daySchedule && daySchedule.duration) {
+              // Convert duration from minutes to hours
+              attendanceHours = daySchedule.duration / 60;
+            } else {
+              // Fallback: calculate from start/end time if duration not available
+              const startTime = new Date(classTime.start);
+              const endTime = new Date(classTime.end);
+              attendanceHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+            }
+          }
+        }
+
+        // Create attendance with hours immediately
         const attendance = await AttendanceModel.create({
           studentId: student._id!,
           date: todayStr,
@@ -108,10 +131,19 @@ export async function POST(request: NextRequest) {
           checkInTime: now,
         });
 
+        // Update attendance with hours
+        if (attendanceHours > 0) {
+          await AttendanceModel.updateAttendanceHours(attendance._id!, attendanceHours);
+          attendance.attendanceHours = attendanceHours;
+        }
+
         // Reset absent count if student was absent before
         if (student.absentCount > 0) {
           await StudentModel.resetAbsentCount(student._id!);
         }
+
+        // Update student's total hours
+        await calculateTotalHours();
 
         return NextResponse.json({
           success: true,
@@ -121,7 +153,8 @@ export async function POST(request: NextRequest) {
           },
           attendance: {
             ...attendance,
-            message: 'Checked in successfully',
+            attendanceHours,
+            message: `Checked in successfully. ${attendanceHours.toFixed(2)} hours recorded.`,
           },
         });
       }
@@ -129,73 +162,18 @@ export async function POST(request: NextRequest) {
     
     // Handle existing attendance (either from initial check or race condition)
     if (existingAttendance) {
-      // Already checked in today
-      if (existingAttendance.status === 'IN') {
-        // Prevent immediate check-out (must be at least 1 minute after check-in)
-        if (existingAttendance.checkInTime) {
-          const checkInTime = new Date(existingAttendance.checkInTime);
-          const timeSinceCheckIn = (now.getTime() - checkInTime.getTime()) / 1000 / 60; // minutes
-          
-          if (timeSinceCheckIn < 1) {
-            return NextResponse.json({
-              success: true,
-              student: {
-                fullname: student.fullname,
-                email: student.email,
-              },
-              attendance: {
-                ...existingAttendance,
-                message: `Checked in ${Math.round(timeSinceCheckIn * 60)} seconds ago. Please wait at least 1 minute before checking out.`,
-              },
-            });
-          }
-        }
-        
-        // Mark OUT (optional check-out)
-        const checkOutTime = now;
-        
-        // Calculate attendance hours if course has schedule
-        let attendanceHours = 0;
-        if (course.schedule && existingAttendance.checkInTime) {
-          const classTime = getScheduledClassTime(now, course.schedule);
-          if (classTime) {
-            attendanceHours = calculateAttendanceHours(
-              new Date(existingAttendance.checkInTime),
-              checkOutTime,
-              classTime.end
-            );
-            
-            // Update attendance with hours
-            await AttendanceModel.updateAttendanceHours(existingAttendance._id!, attendanceHours);
-          }
-        }
-        
-        await AttendanceModel.updateStatus(existingAttendance._id!, 'OUT', checkOutTime);
-        
-        // Update student's total hours
-        await calculateTotalHours();
-        
-        return NextResponse.json({
-          success: true,
-          student: {
-            fullname: student.fullname,
-            email: student.email,
-          },
-          attendance: {
-            ...existingAttendance,
-            status: 'OUT',
-            checkOutTime: checkOutTime,
-            attendanceHours,
-            message: 'Checked out successfully',
-          },
-        });
-      } else {
-        // Already checked out - prevent duplicate
-        return NextResponse.json(
-          { error: 'Already checked out for today' },
-          { status: 400 }
-        );
-      }
+      // Already checked in today - no check-out needed
+      return NextResponse.json({
+        success: true,
+        student: {
+          fullname: student.fullname,
+          email: student.email,
+        },
+        attendance: {
+          ...existingAttendance,
+          message: 'Already checked in for today. No need to check out.',
+        },
+      });
     }
   } catch (error) {
     console.error('Error scanning QR code:', error);
