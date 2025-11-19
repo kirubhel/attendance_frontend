@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     
     // Use UTC+3 date for today's date string
     const todayStr = `${nowUTC3.getUTCFullYear()}-${String(nowUTC3.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUTC3.getUTCDate()).padStart(2, '0')}`;
-    const existingAttendance = await AttendanceModel.findByStudentAndDate(student._id!, todayStr);
+    let existingAttendance = await AttendanceModel.findByStudentAndDate(student._id!, todayStr);
 
     // Get current UTC time for comparisons
     const now = new Date();
@@ -92,32 +92,65 @@ export async function POST(request: NextRequest) {
 
     if (!existingAttendance) {
       // First scan of the day - mark IN
-      const attendance = await AttendanceModel.create({
-        studentId: student._id!,
-        date: todayStr,
-        status: 'IN',
-        checkInTime: now,
-      });
+      // Re-check for existing attendance right before creating to prevent race conditions
+      // This handles cases where two requests arrive simultaneously
+      const doubleCheckAttendance = await AttendanceModel.findByStudentAndDate(student._id!, todayStr);
+      
+      if (doubleCheckAttendance) {
+        // Another request already created attendance, handle as existing attendance
+        existingAttendance = doubleCheckAttendance;
+      } else {
+        // Safe to create new attendance
+        const attendance = await AttendanceModel.create({
+          studentId: student._id!,
+          date: todayStr,
+          status: 'IN',
+          checkInTime: now,
+        });
 
-      // Reset absent count if student was absent before
-      if (student.absentCount > 0) {
-        await StudentModel.resetAbsentCount(student._id!);
+        // Reset absent count if student was absent before
+        if (student.absentCount > 0) {
+          await StudentModel.resetAbsentCount(student._id!);
+        }
+
+        return NextResponse.json({
+          success: true,
+          student: {
+            fullname: student.fullname,
+            email: student.email,
+          },
+          attendance: {
+            ...attendance,
+            message: 'Checked in successfully',
+          },
+        });
       }
-
-      return NextResponse.json({
-        success: true,
-        student: {
-          fullname: student.fullname,
-          email: student.email,
-        },
-        attendance: {
-          ...attendance,
-          message: 'Checked in successfully',
-        },
-      });
-    } else {
+    }
+    
+    // Handle existing attendance (either from initial check or race condition)
+    if (existingAttendance) {
       // Already checked in today
       if (existingAttendance.status === 'IN') {
+        // Prevent immediate check-out (must be at least 1 minute after check-in)
+        if (existingAttendance.checkInTime) {
+          const checkInTime = new Date(existingAttendance.checkInTime);
+          const timeSinceCheckIn = (now.getTime() - checkInTime.getTime()) / 1000 / 60; // minutes
+          
+          if (timeSinceCheckIn < 1) {
+            return NextResponse.json({
+              success: true,
+              student: {
+                fullname: student.fullname,
+                email: student.email,
+              },
+              attendance: {
+                ...existingAttendance,
+                message: `Checked in ${Math.round(timeSinceCheckIn * 60)} seconds ago. Please wait at least 1 minute before checking out.`,
+              },
+            });
+          }
+        }
+        
         // Mark OUT (optional check-out)
         const checkOutTime = now;
         

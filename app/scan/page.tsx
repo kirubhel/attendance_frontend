@@ -16,6 +16,8 @@ export default function ScanPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [cameraId, setCameraId] = useState<string | null>(null);
+  // Track last scanned QR code and timestamp to prevent duplicate scans
+  const lastScannedRef = useRef<{ qrData: string; timestamp: number } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -52,6 +54,8 @@ export default function ScanPage() {
     try {
       setError('');
       setResult(null);
+      // Reset last scanned reference when starting new scan session
+      lastScannedRef.current = null;
 
       // First, set scanning to true so the element is rendered
       setScanning(true);
@@ -82,7 +86,21 @@ export default function ScanPage() {
           aspectRatio: 1.0,
         },
         (decodedText) => {
-          // QR code detected
+          // QR code detected - prevent duplicate scans
+          const now = Date.now();
+          const lastScanned = lastScannedRef.current;
+          
+          // Ignore if same QR code was scanned within last 3 seconds
+          if (lastScanned && 
+              lastScanned.qrData === decodedText && 
+              (now - lastScanned.timestamp) < 3000) {
+            console.log('Duplicate scan ignored:', decodedText);
+            return;
+          }
+          
+          // Update last scanned reference
+          lastScannedRef.current = { qrData: decodedText, timestamp: now };
+          
           console.log('QR Code detected:', decodedText);
           scanQRCode(decodedText);
         },
@@ -124,6 +142,8 @@ export default function ScanPage() {
       scannerRef.current = null;
     }
     setScanning(false);
+    // Reset last scanned reference when stopping
+    lastScannedRef.current = null;
   };
 
   const handleManualInput = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -136,19 +156,44 @@ export default function ScanPage() {
   };
 
   const scanQRCode = async (qrData: string) => {
+    // Prevent multiple simultaneous scans
+    if (loading) {
+      console.log('Scan already in progress, ignoring duplicate');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setResult(null);
 
     try {
+      // Stop scanner immediately to prevent duplicate detections
+      // This prevents the callback from firing multiple times
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+        } catch (err) {
+          // Ignore stop errors (might already be stopped)
+          console.log('Scanner stop error (ignored):', err);
+        }
+      }
+
       const response = await qrApi.scan(qrData);
       setResult(response);
       toast.success('QR code scanned successfully!');
-      await stopScanning();
+      
+      // Scanner is already stopped, just update state
+      setScanning(false);
+      scannerRef.current = null;
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to process QR code';
       setError(errorMsg);
       toast.error(errorMsg);
+      
+      // On error, allow user to restart scanner manually
+      // Don't auto-resume to prevent accidental duplicate scans
+      setScanning(false);
+      scannerRef.current = null;
     } finally {
       setLoading(false);
     }
